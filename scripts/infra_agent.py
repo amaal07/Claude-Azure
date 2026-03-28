@@ -57,6 +57,14 @@ def ask_llm(user_input):
     return reply
 
 
+def clean_tf_code(code):
+    """Remove terraform{} and provider{} blocks from generated code — they already exist in providers.tf"""
+    import re
+    code = re.sub(r'terraform\s*\{[^}]*required_providers[^}]*\{.*?\}[^}]*\}', '', code, flags=re.DOTALL)
+    code = re.sub(r'provider\s+"[^"]+"\s*\{[^}]*\}', '', code, flags=re.DOTALL)
+    return code.strip()
+
+
 def run_command(cmd):
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
     if result.stdout:
@@ -84,7 +92,7 @@ def process_prompt(user_prompt, auto_execute=False):
 
         if action.get("action") == "terraform":
             filename = action.get("filename")
-            code = action.get("code")
+            code = clean_tf_code(action.get("code"))
 
             print(f"\n Generated file: {filename}")
             print(f"\n Terraform code:\n{code}")
