@@ -1,0 +1,97 @@
+name: Build & Deploy to Azure
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "infra/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: 'Infrastructure request (e.g. deploy resources, destroy resources)'
+        required: false
+
+env:
+  APP_NAME: stock-predictor
+  RESOURCE_GROUP: AmalRG
+
+jobs:
+  build-and-deploy:
+    name: Build, Push & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to Azure Container Registry
+        run: az acr login --name ${{ secrets.ACR_NAME }}
+
+      - name: Build & push Docker image
+        run: |
+          IMAGE="${{ secrets.ACR_LOGIN_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }}"
+          LATEST="${{ secrets.ACR_LOGIN_SERVER }}/${{ env.APP_NAME }}:latest"
+          docker build -t "$IMAGE" -t "$LATEST" ./app
+          docker push "$IMAGE"
+          docker push "$LATEST"
+
+      - name: Deploy image to Azure Web App
+        run: |
+          az webapp config container set \
+            --name "${{ secrets.WEBAPP_NAME }}" \
+            --resource-group "${{ env.RESOURCE_GROUP }}" \
+            --docker-custom-image-name \
+              "${{ secrets.ACR_LOGIN_SERVER }}/${{ env.APP_NAME }}:${{ github.sha }}"
+
+      - name: Restart Web App
+        run: |
+          az webapp restart \
+            --name "${{ secrets.WEBAPP_NAME }}" \
+            --resource-group "${{ env.RESOURCE_GROUP }}"
+
+      - name: Print app URL
+        run: |
+          echo "Deployed to: https://${{ secrets.WEBAPP_NAME }}.azurewebsites.net"
+
+  infra-agent:
+    name: Run Infra Agent
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.prompt != '' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Terraform Init
+        run: terraform -chdir=infra init
+
+      - name: Run Infra Agent
+        env:
+          LLM_ENDPOINT: ${{ secrets.LLM_ENDPOINT }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: |
+          python scripts/infra_agent.py "${{ github.event.inputs.prompt }}"

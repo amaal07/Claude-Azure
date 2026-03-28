@@ -1,3 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
 # Local .terraform directories
 .terraform/
 

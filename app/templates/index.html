@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Stock Price Predictor</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="/static/style.css"/>
+</head>
+<body>
+
+<nav class="navbar navbar-dark px-4 py-3">
+  <div class="d-flex align-items-center gap-2">
+    <i class="bi bi-graph-up-arrow fs-4 text-success"></i>
+    <span class="navbar-brand mb-0 fw-bold fs-4">StockAI Predictor</span>
+  </div>
+  <span class="text-muted small">Powered by ML &amp; Azure</span>
+</nav>
+
+<div class="hero-section py-5 text-center">
+  <h1 class="display-5 fw-bold text-white mb-2">AI-Powered Stock Predictions</h1>
+  <p class="lead text-light opacity-75">Enter any stock ticker to get ML-driven price forecasts</p>
+</div>
+
+<div class="container py-5">
+
+  <!-- Search Form -->
+  <div class="row justify-content-center mb-5">
+    <div class="col-lg-8">
+      <div class="card shadow-lg border-0">
+        <div class="card-body p-4">
+          <h5 class="card-title fw-semibold mb-4">
+            <i class="bi bi-search me-2 text-primary"></i>Predict a Stock
+          </h5>
+          <form id="predictForm">
+            <div class="row g-3 align-items-end">
+              <div class="col-md-5">
+                <label class="form-label text-muted small fw-semibold">STOCK TICKER</label>
+                <input type="text" class="form-control form-control-lg" id="ticker"
+                       placeholder="e.g. AAPL, MSFT, TSLA" required autocomplete="off"/>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label text-muted small fw-semibold">PREDICTION WINDOW</label>
+                <select class="form-select form-select-lg" id="days">
+                  <option value="7">7 Days</option>
+                  <option value="14">14 Days</option>
+                  <option value="30">30 Days</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <button type="submit" class="btn btn-primary btn-lg w-100 fw-semibold">
+                  <i class="bi bi-lightning-fill me-1"></i>Predict
+                </button>
+              </div>
+            </div>
+            <div class="mt-3">
+              <span class="text-muted small">Popular: </span>
+              <span class="badge rounded-pill ticker-badge" onclick="setTicker('AAPL')">AAPL</span>
+              <span class="badge rounded-pill ticker-badge" onclick="setTicker('MSFT')">MSFT</span>
+              <span class="badge rounded-pill ticker-badge" onclick="setTicker('TSLA')">TSLA</span>
+              <span class="badge rounded-pill ticker-badge" onclick="setTicker('GOOGL')">GOOGL</span>
+              <span class="badge rounded-pill ticker-badge" onclick="setTicker('AMZN')">AMZN</span>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Spinner -->
+  <div id="loading" class="text-center py-5 d-none">
+    <div class="spinner-border text-primary" style="width:3rem;height:3rem;" role="status"></div>
+    <p class="mt-3 text-muted">Fetching market data and running prediction model...</p>
+  </div>
+
+  <!-- Results -->
+  <div id="results" class="d-none">
+
+    <!-- Ticker Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+      <div>
+        <h2 class="fw-bold mb-0" id="resultTicker"></h2>
+        <small class="text-muted" id="resultSubtitle"></small>
+      </div>
+      <span id="trendBadge" class="badge fs-6 px-3 py-2"></span>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md-3">
+        <div class="stat-card card border-0 shadow-sm h-100">
+          <div class="card-body text-center">
+            <div class="stat-icon mb-2"><i class="bi bi-currency-dollar text-primary fs-3"></i></div>
+            <div class="stat-value fw-bold fs-4" id="statCurrent">-</div>
+            <div class="stat-label text-muted small">Current Price</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-card card border-0 shadow-sm h-100">
+          <div class="card-body text-center">
+            <div class="stat-icon mb-2"><i class="bi bi-flag text-success fs-3"></i></div>
+            <div class="stat-value fw-bold fs-4" id="statTarget">-</div>
+            <div class="stat-label text-muted small">Predicted Price</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-card card border-0 shadow-sm h-100">
+          <div class="card-body text-center">
+            <div class="stat-icon mb-2"><i class="bi bi-arrow-up-right-circle text-warning fs-3"></i></div>
+            <div class="stat-value fw-bold fs-4" id="statChange">-</div>
+            <div class="stat-label text-muted small">Expected Change</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="stat-card card border-0 shadow-sm h-100">
+          <div class="card-body text-center">
+            <div class="stat-icon mb-2"><i class="bi bi-bullseye text-info fs-3"></i></div>
+            <div class="stat-value fw-bold fs-4" id="statAccuracy">-</div>
+            <div class="stat-label text-muted small">Model Accuracy</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-4">
+        <h6 class="fw-semibold mb-3"><i class="bi bi-bar-chart-line me-2 text-primary"></i>Price Chart</h6>
+        <canvas id="priceChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Prediction Table -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <h6 class="fw-semibold mb-3"><i class="bi bi-table me-2 text-primary"></i>Daily Predictions</h6>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Day</th>
+                <th>Date</th>
+                <th>Predicted Price</th>
+                <th>vs Current</th>
+              </tr>
+            </thead>
+            <tbody id="predTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Error Alert -->
+  <div id="errorMsg" class="alert alert-danger d-flex align-items-center d-none mt-4" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <span id="errorText"></span>
+  </div>
+
+</div>
+
+  <!-- Infra Deploy Section -->
+  <div class="row justify-content-center mt-5">
+    <div class="col-lg-8">
+      <div class="card shadow-lg border-0">
+        <div class="card-body p-4">
+          <h5 class="card-title fw-semibold mb-4">
+            <i class="bi bi-cloud-upload me-2 text-warning"></i>Infrastructure Deploy
+          </h5>
+          <form id="deployForm">
+            <div class="row g-3 align-items-end">
+              <div class="col-md-9">
+                <label class="form-label text-muted small fw-semibold">INFRASTRUCTURE REQUEST</label>
+                <input type="text" class="form-control form-control-lg" id="deployPrompt"
+                       placeholder="e.g. deploy resources, destroy resources, plan changes" required autocomplete="off"/>
+              </div>
+              <div class="col-md-3">
+                <button type="submit" class="btn btn-warning btn-lg w-100 fw-semibold">
+                  <i class="bi bi-send-fill me-1"></i>Deploy
+                </button>
+              </div>
+            </div>
+            <div class="mt-3">
+              <span class="text-muted small">Quick actions: </span>
+              <span class="badge rounded-pill ticker-badge" onclick="setPrompt('deploy resources')">Deploy</span>
+              <span class="badge rounded-pill ticker-badge" onclick="setPrompt('plan changes')">Plan</span>
+              <span class="badge rounded-pill ticker-badge" onclick="setPrompt('show state')">Show State</span>
+              <span class="badge rounded-pill ticker-badge" onclick="setPrompt('destroy resources')">Destroy</span>
+            </div>
+          </form>
+          <div id="deployLoading" class="text-center py-3 d-none">
+            <div class="spinner-border text-warning" style="width:2rem;height:2rem;" role="status"></div>
+            <p class="mt-2 text-muted small">Triggering GitHub Actions workflow...</p>
+          </div>
+          <div id="deploySuccess" class="alert alert-success d-flex align-items-center d-none mt-3" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            <span id="deploySuccessText"></span>
+          </div>
+          <div id="deployError" class="alert alert-danger d-flex align-items-center d-none mt-3" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <span id="deployErrorText"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer class="text-center text-muted py-4 small border-top mt-5">
+  Stock predictions are for informational purposes only and do not constitute financial advice.
+  &nbsp;|&nbsp; Hosted on <strong>Azure App Service</strong>
+</footer>
+
+<script>
+  let chartInstance = null;
+
+  function setTicker(symbol) {
+    document.getElementById("ticker").value = symbol;
+  }
+
+  function setPrompt(text) {
+    document.getElementById("deployPrompt").value = text;
+  }
+
+  document.getElementById("deployForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const prompt = document.getElementById("deployPrompt").value.trim();
+
+    document.getElementById("deploySuccess").classList.add("d-none");
+    document.getElementById("deployError").classList.add("d-none");
+    document.getElementById("deployLoading").classList.remove("d-none");
+
+    try {
+      const formData = new FormData();
+      formData.append("prompt", prompt);
+
+      const res = await fetch("/deploy", { method: "POST", body: formData });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.detail || "Deploy trigger failed.");
+
+      document.getElementById("deploySuccessText").textContent =
+        `Workflow triggered for: "${data.prompt}". Check GitHub Actions for progress.`;
+      document.getElementById("deploySuccess").classList.remove("d-none");
+    } catch (err) {
+      document.getElementById("deployErrorText").textContent = err.message;
+      document.getElementById("deployError").classList.remove("d-none");
+    } finally {
+      document.getElementById("deployLoading").classList.add("d-none");
+    }
+  });
+
+  document.getElementById("predictForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const ticker = document.getElementById("ticker").value.trim().toUpperCase();
+    const days = document.getElementById("days").value;
+
+    document.getElementById("results").classList.add("d-none");
+    document.getElementById("errorMsg").classList.add("d-none");
+    document.getElementById("loading").classList.remove("d-none");
+
+    try {
+      const formData = new FormData();
+      formData.append("ticker", ticker);
+      formData.append("days", days);
+
+      const res = await fetch("/predict", { method: "POST", body: formData });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.detail || "Prediction failed.");
+      }
+
+      renderResults(data);
+    } catch (err) {
+      document.getElementById("errorText").textContent = err.message;
+      document.getElementById("errorMsg").classList.remove("d-none");
+    } finally {
+      document.getElementById("loading").classList.add("d-none");
+    }
+  });
+
+  function renderResults(data) {
+    document.getElementById("resultTicker").textContent = data.ticker;
+    document.getElementById("resultSubtitle").textContent =
+      `${data.dates.length}-day forecast  •  ${data.dates[0]} → ${data.dates[data.dates.length - 1]}`;
+
+    const isUp = data.trend === "UP";
+    const badge = document.getElementById("trendBadge");
+    badge.textContent = isUp ? "▲ BULLISH" : "▼ BEARISH";
+    badge.className = `badge fs-6 px-3 py-2 ${isUp ? "bg-success" : "bg-danger"}`;
+
+    document.getElementById("statCurrent").textContent = `$${data.current_price.toFixed(2)}`;
+    document.getElementById("statTarget").textContent = `$${data.predictions[data.predictions.length - 1].toFixed(2)}`;
+
+    const chg = data.change_pct;
+    const chgEl = document.getElementById("statChange");
+    chgEl.textContent = `${chg > 0 ? "+" : ""}${chg}%`;
+    chgEl.className = `stat-value fw-bold fs-4 ${chg >= 0 ? "text-success" : "text-danger"}`;
+
+    document.getElementById("statAccuracy").textContent = `${data.accuracy}%`;
+
+    renderChart(data);
+    renderTable(data);
+
+    document.getElementById("results").classList.remove("d-none");
+    document.getElementById("results").scrollIntoView({ behavior: "smooth" });
+  }
+
+  function renderChart(data) {
+    const ctx = document.getElementById("priceChart").getContext("2d");
+    if (chartInstance) chartInstance.destroy();
+
+    const histColor = "rgba(99, 102, 241, 1)";
+    const predColor = data.trend === "UP" ? "rgba(34, 197, 94, 1)" : "rgba(239, 68, 68, 1)";
+    const predFill = data.trend === "UP" ? "rgba(34, 197, 94, 0.1)" : "rgba(239, 68, 68, 0.1)";
+
+    // Join historical last point with first prediction point
+    const joinDate = data.hist_dates[data.hist_dates.length - 1];
+    const joinPrice = data.hist_prices[data.hist_prices.length - 1];
+    const predDates = [joinDate, ...data.dates];
+    const predPrices = [joinPrice, ...data.predictions];
+
+    chartInstance = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: [...data.hist_dates, ...data.dates],
+        datasets: [
+          {
+            label: "Historical Price",
+            data: [
+              ...data.hist_prices,
+              ...new Array(data.dates.length).fill(null),
+            ],
+            borderColor: histColor,
+            backgroundColor: "rgba(99, 102, 241, 0.05)",
+            borderWidth: 2,
+            pointRadius: 0,
+            fill: true,
+            tension: 0.3,
+          },
+          {
+            label: "Predicted Price",
+            data: [
+              ...new Array(data.hist_dates.length - 1).fill(null),
+              ...predPrices,
+            ],
+            borderColor: predColor,
+            backgroundColor: predFill,
+            borderWidth: 2.5,
+            borderDash: [6, 3],
+            pointRadius: 3,
+            pointBackgroundColor: predColor,
+            fill: true,
+            tension: 0.3,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { position: "top" },
+          tooltip: {
+            callbacks: {
+              label: (ctx) =>
+                ctx.parsed.y !== null ? ` $${ctx.parsed.y.toFixed(2)}` : null,
+            },
+          },
+        },
+        scales: {
+          x: {
+            ticks: {
+              maxTicksLimit: 12,
+              maxRotation: 0,
+            },
+          },
+          y: {
+            ticks: {
+              callback: (val) => `$${val.toFixed(0)}`,
+            },
+          },
+        },
+      },
+    });
+  }
+
+  function renderTable(data) {
+    const tbody = document.getElementById("predTableBody");
+    tbody.innerHTML = "";
+    data.predictions.forEach((price, i) => {
+      const diff = price - data.current_price;
+      const diffPct = ((diff / data.current_price) * 100).toFixed(2);
+      const isPos = diff >= 0;
+      tbody.innerHTML += `
+        <tr>
+          <td><span class="badge bg-secondary">Day ${i + 1}</span></td>
+          <td>${data.dates[i]}</td>
+          <td class="fw-semibold">$${price.toFixed(2)}</td>
+          <td class="${isPos ? "text-success" : "text-danger"}">
+            ${isPos ? "+" : ""}${diffPct}%
+          </td>
+        </tr>`;
+    });
+  }
+</script>
+</body>
+</html>
