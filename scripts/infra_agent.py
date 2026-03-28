@@ -1,7 +1,7 @@
 import subprocess, json, requests, os, sys
 
-LLM_ENDPOINT = os.environ.get("LLM_ENDPOINT", "http://localhost:1234/v1/chat/completions")
-MODEL = os.environ.get("LLM_MODEL", "mistral-7b-instruct-v0.1")
+LLM_ENDPOINT = os.environ.get("LLM_ENDPOINT", "https://api.openai.com/v1/chat/completions")
+MODEL = os.environ.get("LLM_MODEL", "gpt-4o")
 LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
 
 SYSTEM_PROMPT = """You are an Azure infrastructure assistant using Terraform.
