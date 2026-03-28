@@ -58,11 +58,29 @@ def ask_llm(user_input):
 
 
 def clean_tf_code(code):
-    """Remove terraform{} and provider{} blocks from generated code — they already exist in providers.tf"""
-    import re
-    code = re.sub(r'terraform\s*\{[^}]*required_providers[^}]*\{.*?\}[^}]*\}', '', code, flags=re.DOTALL)
-    code = re.sub(r'provider\s+"[^"]+"\s*\{[^}]*\}', '', code, flags=re.DOTALL)
-    return code.strip()
+    """Remove terraform{} and provider{} blocks — they already exist in providers.tf.
+    Uses brace-depth tracking to handle nested blocks correctly."""
+    lines = code.split('\n')
+    result = []
+    skip = False
+    depth = 0
+
+    for line in lines:
+        stripped = line.strip()
+        if depth == 0 and (stripped.startswith('terraform {') or
+                           stripped.startswith('terraform{') or
+                           stripped.startswith('provider "')):
+            skip = True
+
+        if skip:
+            depth += line.count('{') - line.count('}')
+            if depth <= 0:
+                skip = False
+                depth = 0
+        else:
+            result.append(line)
+
+    return '\n'.join(result).strip()
 
 
 def run_command(cmd):
