@@ -17,7 +17,7 @@ For other operations respond with JSON:
 {"action": "run", "command": "<terraform command>"}
 
 Terraform operation examples:
-- destroy: {"action": "run", "command": "terraform -chdir=infra destroy -auto-approve"}
+- destroy vm: {"action": "run", "command": "terraform -chdir=infra destroy -target=azurerm_linux_virtual_machine.test_vm -target=azurerm_network_interface.vm_nic -target=azurerm_subnet.vm_subnet -target=azurerm_virtual_network.vm_vnet -auto-approve"}
 - plan:    {"action": "run", "command": "terraform -chdir=infra plan"}
 - show:    {"action": "run", "command": "terraform -chdir=infra show"}
 - init:    {"action": "run", "command": "terraform -chdir=infra init"}
@@ -150,17 +150,16 @@ def process_prompt(user_prompt, auto_execute=False):
                     run_command("terraform -chdir=infra apply -auto-approve")
 
         elif action.get("action") in ("run", "delete", "create", "list"):
-            print(f"\n Running: {action['command']}")
+            command = action["command"]
+            print(f"\n Running: {command}")
             if auto_execute:
-                output = run_command(action["command"])
-                print(output)
-                return output
+                run_command("terraform -chdir=infra init")
+                run_command(command)
             else:
                 confirm = input("Execute? (y/n): ")
                 if confirm == "y":
-                    output = run_command(action["command"])
-                    print(output)
-                    return output
+                    run_command("terraform -chdir=infra init")
+                    run_command(command)
 
     except json.JSONDecodeError:
         print(f"\nAssistant: {reply}")
