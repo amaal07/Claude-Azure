@@ -1,0 +1,12 @@
+# Copy this file to terraform.tfvars and fill in your values.
+# terraform.tfvars is git-ignored to avoid leaking credentials.
+
+resource_group_name = "AmalRG"
+location            = "eastus"
+app_name            = "stock-predictor"
+
+# ACR name must be globally unique, lowercase alphanumeric, 5-50 chars.
+# Add a random suffix to ensure uniqueness, e.g. "stockpredictorxyz42"
+acr_name = "stockpredictorxyz42"
+
+app_service_sku = "B1"
