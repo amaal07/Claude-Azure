@@ -57,7 +57,13 @@ def ask_llm(user_input):
 
 def run_command(cmd):
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    return result.stdout or result.stderr
+    if result.stdout:
+        print(result.stdout)
+    if result.stderr:
+        print(result.stderr)
+    if result.returncode != 0:
+        raise Exception(f"Command failed (exit {result.returncode}): {cmd}")
+    return result.stdout
 
 
 def git_commit_push(filename):
@@ -92,10 +98,11 @@ def process_prompt(user_prompt, auto_execute=False):
                 git_commit_push(filename)
 
                 # Step 3: Run terraform apply to create the resource
+                print(f"\n[3/3] Running terraform init...")
+                run_command("terraform -chdir=infra init")
                 print(f"\n[3/3] Running terraform apply...")
-                output = run_command("terraform -chdir=infra init && terraform -chdir=infra apply -auto-approve")
-                print(output)
-                return output
+                run_command("terraform -chdir=infra apply -auto-approve")
+                print(f"\n[3/3] Resource created successfully.")
             else:
                 confirm = input("Write file, commit to repo and apply? (y/n): ")
                 if confirm == "y":
@@ -104,9 +111,10 @@ def process_prompt(user_prompt, auto_execute=False):
                     print(f"\n[1/3] Written to {filename}")
                     git_commit_push(filename)
                     print(f"\n[2/3] Committed to repo")
-                    output = run_command("terraform -chdir=infra init && terraform -chdir=infra apply -auto-approve")
-                    print(f"\n[3/3] {output}")
-                    return output
+                    print(f"\n[3/3] Running terraform init...")
+                    run_command("terraform -chdir=infra init")
+                    print(f"\n[3/3] Running terraform apply...")
+                    run_command("terraform -chdir=infra apply -auto-approve")
 
         elif action.get("action") in ("run", "delete", "create", "list"):
             print(f"\n Running: {action['command']}")
