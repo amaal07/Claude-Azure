@@ -42,9 +42,10 @@ async def predict(ticker: str = Form(...), days: int = Form(7)):
 async def deploy(prompt: str = Form(...)):
     if not GITHUB_TOKEN or not GITHUB_REPO:
         raise HTTPException(status_code=500, detail="GitHub integration not configured.")
+    url = f"https://api.github.com/repos/{GITHUB_REPO}/actions/workflows/deploy.yml/dispatches"
     async with httpx.AsyncClient() as client:
         res = await client.post(
-            f"https://api.github.com/repos/{GITHUB_REPO}/actions/workflows/deploy.yml/dispatches",
+            url,
             headers={
                 "Authorization": f"Bearer {GITHUB_TOKEN}",
                 "Accept": "application/vnd.github+json"
@@ -52,7 +53,7 @@ async def deploy(prompt: str = Form(...)):
             json={"ref": "main", "inputs": {"prompt": prompt}}
         )
     if res.status_code != 204:
-        raise HTTPException(status_code=500, detail=f"GitHub API error: {res.text}")
+        raise HTTPException(status_code=500, detail=f"GitHub API error | URL: {url} | REPO: {GITHUB_REPO} | Status: {res.status_code} | Response: {res.text}")
     return {"status": "triggered", "prompt": prompt}
 
 
