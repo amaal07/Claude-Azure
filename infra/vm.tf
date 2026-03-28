@@ -1,19 +1,3 @@
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = ">= 3.0.0"
-    }
-    tls = {
-      source = "hashicorp/tls"
-    }
-  }
-}
-
-provider "azurerm" {
-  features {}
-}
-
 resource "azurerm_virtual_network" "vm_vnet" {
   name                = "vm-vnet"
   address_space       = ["10.0.0.0/16"]

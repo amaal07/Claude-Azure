@@ -29,6 +29,8 @@ Rules:
 - Use tls_private_key for SSH key generation
 - Use Standard_B1s size for test VMs
 - Use resource_group_name = "AmalRG" and location = "eastus"
+- NEVER include terraform{} block or provider{} block in generated code — they already exist in providers.tf
+- Only include resource blocks in the generated code
 - Only respond with JSON, no explanation
 
 Example for create test VM:
