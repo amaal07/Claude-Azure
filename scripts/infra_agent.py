@@ -58,29 +58,33 @@ def ask_llm(user_input):
 
 
 def clean_tf_code(code):
-    """Remove terraform{} and provider{} blocks — they already exist in providers.tf.
-    Uses brace-depth tracking to handle nested blocks correctly."""
-    lines = code.split('\n')
+    """Remove terraform{} and provider{} blocks — they already exist in providers.tf."""
     result = []
     skip = False
     depth = 0
 
-    for line in lines:
+    for line in code.splitlines():
         stripped = line.strip()
-        if depth == 0 and (stripped.startswith('terraform {') or
-                           stripped.startswith('terraform{') or
-                           stripped.startswith('provider "')):
+        if not skip and depth == 0 and (
+            stripped.startswith('terraform {') or
+            stripped.startswith('terraform{') or
+            stripped.startswith('provider "') or
+            stripped.startswith("provider '")
+        ):
             skip = True
 
         if skip:
-            depth += line.count('{') - line.count('}')
+            depth += stripped.count('{') - stripped.count('}')
             if depth <= 0:
                 skip = False
                 depth = 0
-        else:
-            result.append(line)
+            continue
 
-    return '\n'.join(result).strip()
+        result.append(line)
+
+    cleaned = '\n'.join(result).strip()
+    print(f"\n[DEBUG] Cleaned TF code:\n{cleaned}\n")
+    return cleaned
 
 
 def run_command(cmd):
@@ -121,16 +125,17 @@ def process_prompt(user_prompt, auto_execute=False):
                     f.write(code)
                 print(f"\n[1/3] Written to {filename}")
 
-                # Step 2: Commit and push to GitHub repo
-                print(f"\n[2/3] Committing {filename} to repo...")
-                git_commit_push(filename)
-
-                # Step 3: Run terraform apply to create the resource
-                print(f"\n[3/3] Running terraform init...")
+                # Step 2: Run terraform init + apply
+                print(f"\n[2/3] Running terraform init...")
                 run_command("terraform -chdir=infra init")
-                print(f"\n[3/3] Running terraform apply...")
+                print(f"\n[2/3] Running terraform apply...")
                 run_command("terraform -chdir=infra apply -auto-approve")
-                print(f"\n[3/3] Resource created successfully.")
+                print(f"\n[2/3] Resource created in Azure.")
+
+                # Step 3: Commit and push to repo only after successful apply
+                print(f"\n[3/3] Committing {filename} to repo...")
+                git_commit_push(filename)
+                print(f"\n[3/3] Done.")
             else:
                 confirm = input("Write file, commit to repo and apply? (y/n): ")
                 if confirm == "y":
