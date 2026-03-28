@@ -98,9 +98,6 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Terraform Init
-        run: terraform -chdir=infra init
-
       - name: Create tfvars
         run: echo '${{ secrets.TF_VARS }}' > infra/terraform.tfvars
 
