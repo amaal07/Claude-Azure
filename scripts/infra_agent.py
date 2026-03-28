@@ -57,6 +57,15 @@ def ask_llm(user_input):
     return reply
 
 
+def extract_targets(code):
+    """Extract resource addresses from Terraform HCL code for use with -target flag."""
+    import re
+    targets = []
+    for match in re.finditer(r'resource\s+"([^"]+)"\s+"([^"]+)"', code):
+        targets.append(f"{match.group(1)}.{match.group(2)}")
+    return targets
+
+
 def clean_tf_code(code):
     """Remove terraform{} and provider{} blocks — they already exist in providers.tf."""
     result = []
@@ -125,11 +134,13 @@ def process_prompt(user_prompt, auto_execute=False):
                     f.write(code)
                 print(f"\n[1/3] Written to {filename}")
 
-                # Step 2: Run terraform init + apply
+                # Step 2: Run terraform init + apply (target only resources in generated file)
+                targets = extract_targets(code)
+                target_flags = " ".join(f"-target={t}" for t in targets)
                 print(f"\n[2/3] Running terraform init...")
                 run_command("terraform -chdir=infra init")
-                print(f"\n[2/3] Running terraform apply...")
-                run_command("terraform -chdir=infra apply -auto-approve")
+                print(f"\n[2/3] Running terraform apply targeting: {targets}")
+                run_command(f"terraform -chdir=infra apply {target_flags} -auto-approve")
                 print(f"\n[2/3] Resource created in Azure.")
 
                 # Step 3: Commit and push to repo only after successful apply
