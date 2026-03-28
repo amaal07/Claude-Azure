@@ -7,6 +7,13 @@ terraform {
       version = "~> 3.0"
     }
   }
+
+  backend "azurerm" {
+    resource_group_name  = "AmalRG"
+    storage_account_name = "tfstateamal"
+    container_name       = "tfstate"
+    key                  = "claude-azure.tfstate"
+  }
 }
 
 provider "azurerm" {
